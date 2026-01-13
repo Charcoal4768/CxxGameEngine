@@ -6,3 +6,5 @@ To complie this project, please create a libs/ folder in the directory where the
 - SDL2
 - SDL2_image
 - SDL2_ttf
+
+Current status: Rendering pipeline and UI systems are fully functional. Physics system is undergoing a refactor from AABB to Circle-based collision to better handle rotated entities.
