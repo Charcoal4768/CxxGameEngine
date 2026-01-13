@@ -43,3 +43,21 @@ add_custom_command(TARGET SDL2Demo POST_BUILD
     "${CMAKE_CURRENT_SOURCE_DIR}/assets"
     "$<TARGET_FILE_DIR:SDL2Demo>/assets"
 )
+
+# Copy SDL2 and extension DLLs to the output directory
+add_custom_command(TARGET SDL2Demo POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/SDL2/bin/SDL2.dll"
+    "$<TARGET_FILE_DIR:SDL2Demo>/SDL2.dll"
+)
+
+add_custom_command(TARGET SDL2Demo POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/SDL2_image/bin/SDL2_image.dll"
+    "$<TARGET_FILE_DIR:SDL2Demo>/SDL2_image.dll"
+)
+add_custom_command(TARGET SDL2Demo POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/SDL2_ttf/bin/SDL2_ttf.dll"
+    "$<TARGET_FILE_DIR:SDL2Demo>/SDL2_ttf.dll"
+)
