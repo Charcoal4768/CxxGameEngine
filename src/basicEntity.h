@@ -23,6 +23,16 @@ struct gameObject
     virtual ~gameObject() = default;
 };
 
+struct Point2D{
+    double x = 0.0;
+    double y = 0.0;
+};
+
+struct Velocity2D{
+    double velX = 0.0;
+    double velY = 0.0;
+};
+
 struct Moveable{
     float velX = 0, velY = 0;
     float accX = 0, accY = 0;

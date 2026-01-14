@@ -3,11 +3,14 @@
 #include <SDL2/SDL_ttf.h>
 #include <math.h>
 #include <iostream>
+#include <cstdlib>
+#include <ctime>
 #include "renderPipeline.h"
 #include "basicEntity.h"
 #include "environmentObject.h"
 #include "advancedObjects.h"
 #include "uiObjects.h"
+#include "enemySpawner.h"
 #include <vector>
 #include <functional>
 #include <map>
@@ -48,6 +51,7 @@ struct Player : public gameObject, public Moveable, public Damageable, public Da
     float maxFuelCooldown = 1.5f;
     float fuelCooldown = 0.0f;
     float fuelBurnRate; // fuel per second when thrusting
+    float maxSpeed = 300.0f;
 
     Player(float _x, float _y, float _w = 16, float _h = 32, SDL_Color _color = {0, 0, 255, 255}, int _z = 0, SDL_Window *win = nullptr, SDL_Renderer *renderer = nullptr)
     {
@@ -73,6 +77,44 @@ struct Player : public gameObject, public Moveable, public Damageable, public Da
         if (renderer)
             texture = loadTexture("assets/textures/Untitled.png", renderer);
     }
+    void flashRedOnDamage()
+    {
+        if (damageCooldown > maxCooldown - flashWindow)
+        {
+            color = {255, 0, 0, 255};
+        }
+        else
+        {
+            color = baseColor;
+        }
+    }
+    void feulRegenCheck(float dt)
+    {
+        if (fuel < maxFuel)
+        {
+            fuelCooldown -= dt;
+
+            if (fuelCooldown <= 0.0f)
+            {
+                fuel += (double)maxFuelRegenRate;
+
+                if (fuel > maxFuel)
+                    fuel = (double)maxFuel;
+                if (maxFuel - fuel < 0.2f)
+                {
+                    fuel = maxFuel;
+                }
+
+                fuelCooldown = maxFuelCooldown;
+
+                // std::cout << "Fuel Regenerated! Current: " << fuel << "\n";
+            }
+        }
+        else
+        {
+            fuelCooldown = maxFuelCooldown;
+        }
+    }
     void update(float dt) override
     {
         bool isThrusting = (accX != 0.0f || accY != 0.0f);
@@ -83,44 +125,15 @@ struct Player : public gameObject, public Moveable, public Damageable, public Da
         }
         else
         {
-            if (fuel < maxFuel)
-            {
-                fuelCooldown -= dt;
-
-                if (fuelCooldown <= 0.0f)
-                {
-                    fuel += (double)maxFuelRegenRate;
-
-                    if (fuel > maxFuel)
-                        fuel = (double)maxFuel;
-                    if (maxFuel - fuel < 0.2f)
-                    {
-                        fuel = maxFuel;
-                    }
-
-                    fuelCooldown = maxFuelCooldown;
-
-                    // std::cout << "Fuel Regenerated! Current: " << fuel << "\n";
-                }
-            }
-            else
-            {
-                fuelCooldown = maxFuelCooldown;
-            }
+            feulRegenCheck(dt);
         }
 
         // Existing update logic
         applyMovement(x, y, dt);
 
-        // Flash red on damage logic...
-        if (damageCooldown > maxCooldown - flashWindow)
-        {
-            color = {255, 0, 0, 255};
-        }
-        else
-        {
-            color = baseColor;
-        }
+        // Flash red on damage logic..
+        flashRedOnDamage();
+
         rect = {static_cast<int>(x), static_cast<int>(y), static_cast<int>(w), static_cast<int>(h)};
         angle = degrees;
     }
@@ -135,23 +148,25 @@ struct Player : public gameObject, public Moveable, public Damageable, public Da
         velY += accY * dt;
 
         float drag = pow(fakeFriction, dt);
+
+        if (sqrt(velX * velX + velY * velY) > maxSpeed)
+        {
+            float angle = atan2(velY, velX);
+            velX = cos(angle) * maxSpeed;
+            velY = sin(angle) * maxSpeed;
+        }
+
         velX *= drag;
         velY *= drag;
 
         x += velX * dt;
         y += velY * dt;
+
         if (abs(accX) > 0.0f || abs(accY) > 0.0f)
             fuel -= ((sqrt(velX * velX + velY * velY) + 45.0f) * fuelBurnRate / speed) * dt; // Consume fuel based on speed but only when accelerating
         if (fuel < 0.5)
             fuel = 0.0f;
     }
-    // void submitRenderRequest(RenderPipeline &pipeline, int overrideZ = -1) override
-    // {
-    //     // Render hitboxes for debugging
-    //     hitboxTop.submitRenderRequest(pipeline, overrideZ);
-    //     hitboxBottom.submitRenderRequest(pipeline, overrideZ);
-    //     gameObject::submitRenderRequest(pipeline, overrideZ);
-    // }
 };
 
 CollisionGrid colgrid;
@@ -171,25 +186,17 @@ void collisionCheck(double deltaTime)
         {
             if (obj == other)
                 continue; // Don't collide with self
-            Damaging *hazard = dynamic_cast<Damaging *>(other);
-            Damageable *victim = dynamic_cast<Damageable *>(obj);
 
             SDL_Rect intersection;
             if (SDL_IntersectRect(&obj->rect, &other->rect, &intersection))
             {
-                Damageable *dmg = dynamic_cast<Damageable *>(obj);
-                if (dmg && dmg->damageCooldown > 0)
-                {
-                    dmg->damageCooldown -= (float)deltaTime;
-                }
                 Moveable *mover = dynamic_cast<Moveable *>(obj);
+                Damaging *hazard = dynamic_cast<Damaging *>(other);
+                Damageable *victim = dynamic_cast<Damageable *>(obj);
                 if (!mover)
                     continue;
-
                 if (hazard && victim)
-                {
                     victim->takeDamage(hazard);
-                }
 
                 if (!other->collidable)
                     continue;
@@ -213,25 +220,44 @@ void collisionCheck(double deltaTime)
                     if (obj->x < other->x)
                     { // Hitting from left
                         obj->x = other->x - (obj->w + 4);
+                        mover->velX = -mover->velX * mover->bouncy;
                     }
                     else if (obj->x > other->x)
                     { // Hitting from right
                         obj->x = other->x + (other->w + 4);
+                        mover->velX = -mover->velX * mover->bouncy;
                     }
                     else
                     {
-                        // Edge case: perfectly aligned?
-                        mover->velX = -mover->velX * 10;
-                        mover->velY = -mover->velY * 10;
+                        mover->velX = -mover->velX * 2;
+                        mover->velY = -mover->velY * 2;
                     }
                 }
-                // mover->velX = -mover->velX;
-                // mover->velY = -mover->velY;
-                if (fabs(mover->velX) < 0.5f)
+                // if (victim && victim->damageCooldown > 0)
+                // {
+                //     victim->damageCooldown -= (float)deltaTime;
+                // }
+                if (fabs(mover->velX) < 0.1f)
                     mover->velX = 0;
-                if (fabs(mover->velY) < 0.5f)
+                if (fabs(mover->velY) < 0.1f)
                     mover->velY = 0;
             }
+        }
+    }
+}
+
+void damageableCooldowns(double deltaTime)
+{
+    for (auto obj : sceneObjects)
+    {
+        Damageable *victim = dynamic_cast<Damageable *>(obj);
+        if (victim && victim->damageCooldown > 0)
+        {
+            victim->damageCooldown -= (float)deltaTime;
+        }
+        if (victim && victim->damageCooldown < 0)
+        {
+            victim->damageCooldown = 0;
         }
     }
 }
@@ -244,6 +270,7 @@ std::pair<int, int> ABDist(const std::pair<int, int> &A, const std::pair<int, in
 
 int main(int argc, char *argv[])
 {
+    srand((unsigned int)time(NULL));
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
         printf("Failed to initialize SDL2! SDL: %s\n", SDL_GetError());
@@ -276,6 +303,7 @@ int main(int argc, char *argv[])
     }
 
     RenderPipeline pipeline;
+    EnemySpawner spawner = EnemySpawner(win, sceneObjects, 100, 100, 5, 10, 10, true);
 
     Uint64 NOW = SDL_GetPerformanceCounter();
     Uint64 LAST = 0;
@@ -306,12 +334,17 @@ int main(int argc, char *argv[])
         20, 40, 10, 600, 4, 4, {100, 100, 100, 55}, {250, 250, 255, 255}, player->fuel);
 
     // register objects in scene
-    sceneObjects.push_back(leftWall);
-    sceneObjects.push_back(rightWall);
-    sceneObjects.push_back(player);
-    sceneObjects.push_back(playerHealthBar);
-    sceneObjects.push_back(playerFeulDisplay);
-    sceneObjects.push_back(lavaPit);
+    sceneObjects.emplace_back(leftWall);
+    sceneObjects.emplace_back(rightWall);
+    sceneObjects.emplace_back(player);
+    sceneObjects.emplace_back(playerHealthBar);
+    sceneObjects.emplace_back(playerFeulDisplay);
+    sceneObjects.emplace_back(lavaPit);
+    std::vector<gameObject*> *enemyScene = spawner.StartSpawning();
+    for (auto obj : *enemyScene)
+    {
+        sceneObjects.emplace_back(obj);
+    }
 
     // Controllers: menu does nothing for now, in-game handles movement keys
     controllers[GameState::Menu] = [&](const SDL_Event &ev)
@@ -374,26 +407,23 @@ int main(int argc, char *argv[])
                 quit = true;
             controllers[currentState](e);
         }
-
-        // Refresh Grid Every Frame
         colgrid.clear();
+
         for (auto obj : sceneObjects)
         {
             if (obj->active)
                 colgrid.insert(obj);
             obj->update((float)deltaTime);
+            obj->submitRenderRequest(pipeline);
         }
+        damageableCooldowns(deltaTime);
 
         collisionCheck(deltaTime);
+
 
         // --- STEP 3: Render ---
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-
-        for (auto obj : sceneObjects)
-        {
-            obj->submitRenderRequest(pipeline);
-        }
         pipeline.execute(renderer);
         SDL_RenderPresent(renderer);
         if (player->isDed)

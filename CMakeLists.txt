@@ -21,6 +21,7 @@ src/renderPipeline.cpp
 src/environmentObject.cpp
 src/advancedObjects.cpp
 src/uiObjects.cpp
+src/enemySpawner.cpp
 ) 
 
 set_target_properties(SDL2Demo PROPERTIES WIN32_EXECUTABLE FALSE)

@@ -136,6 +136,10 @@ void FeulBar::update(float dt)
     {
         displayedFeul = feul;
     }
+    if (maxFuel-feul < 0.2f)
+    {
+        displayedFeul = maxFuel;
+    }
     else
     {
         float t = fabs(diff) / maxFuel;
