@@ -303,11 +303,12 @@ int main(int argc, char *argv[])
     }
 
     RenderPipeline pipeline;
-    EnemySpawner spawner = EnemySpawner(win, sceneObjects, 100, 100, 5, 10, 10, true);
+    EnemySpawner spawner = EnemySpawner(win, sceneObjects, 225, 225, 25, 10, 10, true);
 
     Uint64 NOW = SDL_GetPerformanceCounter();
     Uint64 LAST = 0;
     double deltaTime = 0; // in seconds
+    double elapsedTime = 0.0;
 
     // FPS tracking
     int frameCount = 0;
@@ -317,11 +318,12 @@ int main(int argc, char *argv[])
     int mouseX, mouseY;
 
     bool quit = false;
+    bool initializeSpawning = false;
     SDL_Event e;
 
     Wall *leftWall = new Wall(100.0f, 460.0f, 200.0f, 20.0f, {50, 50, 50, 255}, 1);
     Wall *rightWall = new Wall(500.0f, 100.0f, 100.0f, 100.0f, {50, 200, 50, 255}, 1);
-    Player *player = new Player(200.0f, 100.0f, 50.0f, 50.0f, {50, 50, 255, 255}, 2, win, renderer);
+    Player *player = new Player(200.0f, 100.0f, 60.0f, 60.0f, {50, 50, 255, 255}, 2, win, renderer);
     Lava *lavaPit = new Lava(300.0f, 470.0f, 50.0f, 10.0f, 3);
     HpTracker *playerHealthBar = new HpTracker(
         0, 0, // Position (will be overridden by update)
@@ -340,7 +342,7 @@ int main(int argc, char *argv[])
     sceneObjects.emplace_back(playerHealthBar);
     sceneObjects.emplace_back(playerFeulDisplay);
     sceneObjects.emplace_back(lavaPit);
-    std::vector<gameObject*> *enemyScene = spawner.StartSpawning();
+    std::vector<gameObject*> *enemyScene = spawner.InitializeEnemies();
     for (auto obj : *enemyScene)
     {
         sceneObjects.emplace_back(obj);
@@ -373,6 +375,21 @@ int main(int argc, char *argv[])
             // Logic for shooting a bullet could go here!
             break;
         }
+        case SDL_KEYDOWN:
+        {
+            if (ev.key.keysym.scancode == SDL_SCANCODE_P)
+            {
+                currentState = GameState::Paused;
+                break;
+            }
+            if (ev.key.keysym.scancode == SDL_SCANCODE_D)
+            {
+                //debug/testing stuff
+                spawner.StartSpawning();
+                break;
+            }
+            break;
+        }
         }
     };
 
@@ -386,13 +403,19 @@ int main(int argc, char *argv[])
         LAST = NOW;
         NOW = SDL_GetPerformanceCounter();
         deltaTime = (double)((NOW - LAST) / (double)SDL_GetPerformanceFrequency());
-        if (deltaTime > maxDelay)
-            deltaTime = maxDelay;
+        elapsedTime += deltaTime;
+        if (elapsedTime > 5.0 && (!initializeSpawning))
+        {
+            initializeSpawning = true;
+            spawner.StartSpawning();
+        }
 
         const Uint8 *keystate = SDL_GetKeyboardState(NULL);
 
         player->accX = 0; // Reset acceleration each frame
         player->accY = 0;
+
+        spawner.Update((float)deltaTime);
 
         if (keystate[SDL_SCANCODE_SPACE])
         {
@@ -437,6 +460,7 @@ int main(int argc, char *argv[])
         delete obj;
     }
 
+    spawner.StopSpawning();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(win);
     SDL_Quit();

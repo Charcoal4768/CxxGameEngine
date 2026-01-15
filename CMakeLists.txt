@@ -10,10 +10,8 @@ set(SDL2_IMAGE_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/libs/SDL2_image/lib/libSDL2_
 set(SDL2_TTF_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/SDL2_ttf/include")
 set(SDL2_TTF_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/libs/SDL2_ttf/lib/libSDL2_ttf.dll.a")
 
-# Find the SDL2 package (it will now look in the directory defined above)
 find_package(SDL2 REQUIRED)
 
-# Add your executable source files
 add_executable(SDL2Demo 
 src/main.cpp
 src/basicEntity.cpp
@@ -61,4 +59,35 @@ add_custom_command(TARGET SDL2Demo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
     "${CMAKE_CURRENT_SOURCE_DIR}/libs/SDL2_ttf/bin/SDL2_ttf.dll"
     "$<TARGET_FILE_DIR:SDL2Demo>/SDL2_ttf.dll"
+)
+
+# Copy SDL2_image dependency DLLs to the output directory
+add_custom_command(TARGET SDL2Demo POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/SDL2_image/bin/libpng16-16.dll"
+    "$<TARGET_FILE_DIR:SDL2Demo>/libpng16-16.dll"
+)
+
+add_custom_command(TARGET SDL2Demo POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/SDL2_image/bin/zlib1.dll"
+    "$<TARGET_FILE_DIR:SDL2Demo>/zlib1.dll"
+)
+
+add_custom_command(TARGET SDL2Demo POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/SDL2_image/bin/libjpeg-9.dll"
+    "$<TARGET_FILE_DIR:SDL2Demo>/libjpeg-9.dll"
+)
+
+add_custom_command(TARGET SDL2Demo POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/SDL2_image/bin/libtiff-5.dll"
+    "$<TARGET_FILE_DIR:SDL2Demo>/libtiff-5.dll"
+)
+
+add_custom_command(TARGET SDL2Demo POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/SDL2_image/bin/libwebp-7.dll"
+    "$<TARGET_FILE_DIR:SDL2Demo>/libwebp-7.dll"
 )
