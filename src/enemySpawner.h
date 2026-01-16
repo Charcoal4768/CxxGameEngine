@@ -9,7 +9,7 @@ struct Asteroid:public gameObject, public Moveable, public Damageable, public Da
     SDL_Color baseColor;
     int team; // Enemy team
     int xRange, yRange;
-    Asteroid(float _x, float _y, float _w = 16, float _h = 16, float _velX = 0, float _velY = 0, SDL_Color _color = {200, 200, 200, 255}, int _z = 0, int _xRange = 0, int _yRange = 0, SDL_Texture* tex = nullptr);
+    Asteroid(float _x, float _y, float _w = 16, float _h = 16, float _velX = 0, float _velY = 0, SDL_Color _color = {200, 200, 200, 255}, int _z = 0, int _xRange = 0, int _yRange = 0, SDL_Texture* tex = nullptr, SDL_Renderer* renderer = nullptr);
     void update(float dt) override;
     void takeDamage(Damaging* source) override;
     void flashRedOnDamage();
@@ -23,6 +23,7 @@ private:
     EnemyEntityList* enemyList;
     std::vector<gameObject*> *scene;
     VelocityTable velocityTable;
+    SDL_Renderer* renderer;
 
     void setupSpawnPoints(SDL_Window* win, int marginY, int marginX, bool edgesOnly, int batchSize);
     void spawnLoop();
@@ -36,7 +37,7 @@ private:
 public:
     bool paused = true;
     // srand must be called before this constructor to seed randomness, preferably in main()
-    EnemySpawner(SDL_Window* win, std::vector<gameObject*> _scene, int marginY, int marginX, int maxAlive, int batchSize, int coolDown, bool edgesOnly = true);
+    EnemySpawner(SDL_Window* win, SDL_Renderer* renderer, std::vector<gameObject*> _scene, int marginY, int marginX, int maxAlive, int batchSize, int coolDown, bool edgesOnly = true);
     std::vector<gameObject*> *InitializeEnemies();
     void StartSpawning();
     void StopSpawning();

@@ -38,7 +38,7 @@ SDL_Texture *loadTexture(const std::string &path, SDL_Renderer *renderer)
     return newTexture;
 }
 
-struct Player : public gameObject, public Moveable, public Damageable, public Damaging
+struct Player : public gameObject, public controllable, public Moveable, public Damageable, public Damaging
 {
     SDL_Window *window;
     SDL_Color baseColor;
@@ -68,7 +68,7 @@ struct Player : public gameObject, public Moveable, public Damageable, public Da
         maxCooldown = 2.0f;
         baseColor = color;
         attackPower = 2;
-        fakeFriction = 0.5f;
+        fakeFriction = 0.9f;
         maxFuel = 10;
         fuel = (double)maxFuel;
         maxFuelRegenRate = 1.0f;
@@ -133,6 +133,8 @@ struct Player : public gameObject, public Moveable, public Damageable, public Da
 
         // Flash red on damage logic..
         flashRedOnDamage();
+
+        if (isDed) dead = true;
 
         rect = {static_cast<int>(x), static_cast<int>(y), static_cast<int>(w), static_cast<int>(h)};
         angle = degrees;
@@ -303,7 +305,7 @@ int main(int argc, char *argv[])
     }
 
     RenderPipeline pipeline;
-    EnemySpawner spawner = EnemySpawner(win, sceneObjects, 225, 225, 25, 10, 10, true);
+    EnemySpawner spawner = EnemySpawner(win, renderer, sceneObjects, 225, 225, 25, 10, 10, true);
 
     Uint64 NOW = SDL_GetPerformanceCounter();
     Uint64 LAST = 0;
@@ -316,6 +318,7 @@ int main(int argc, char *argv[])
     int displayedFPS = 0;
     double maxDelay = 0.05;
     int mouseX, mouseY;
+    controllable *playerObject = nullptr;
 
     bool quit = false;
     bool initializeSpawning = false;
@@ -334,6 +337,8 @@ int main(int argc, char *argv[])
         {255, 55, 0, 255});
     FeulBar *playerFeulDisplay = new FeulBar(
         20, 40, 10, 600, 4, 4, {100, 100, 100, 55}, {250, 250, 255, 255}, player->fuel);
+
+    playerObject = dynamic_cast<controllable *>(player);
 
     // register objects in scene
     sceneObjects.emplace_back(leftWall);
@@ -449,8 +454,12 @@ int main(int argc, char *argv[])
         SDL_RenderClear(renderer);
         pipeline.execute(renderer);
         SDL_RenderPresent(renderer);
-        if (player->isDed)
+        if (playerObject->dead)
         {
+            deltaTime = 0;
+            // ill call menu or something here later
+            printf("Player is dead! Exiting...\n");
+            SDL_Delay(2000);
             quit = true;
         }
     }

@@ -1,6 +1,8 @@
 #include "enemySpawner.h"
 #include <cstdio>
 #include <cmath>
+#include <SDL2/SDL_image.h>
+#include <iostream>
 
 // Generate random asteroid size keeping width and height within 10 units of each other
 std::pair<float, float> GenerateAsteroidSize(int minSize = 40, int maxSize = 200)
@@ -10,7 +12,7 @@ std::pair<float, float> GenerateAsteroidSize(int minSize = 40, int maxSize = 200
     return {baseSize, baseSize + sizeVariation};
 }
 
-Asteroid::Asteroid(float _x, float _y, float _w, float _h, float _velX, float _velY, SDL_Color _color, int _z, int _xRange, int _yRange, SDL_Texture *tex)
+Asteroid::Asteroid(float _x, float _y, float _w, float _h, float _velX, float _velY, SDL_Color _color, int _z, int _xRange, int _yRange, SDL_Texture *tex, SDL_Renderer *renderer)
 {
     x = _x;
     y = _y;
@@ -29,7 +31,7 @@ Asteroid::Asteroid(float _x, float _y, float _w, float _h, float _velX, float _v
     attackPower = 4;
     fakeFriction = 0.02f;
     rect = {(int)x, (int)y, (int)w, (int)h};
-    texture = tex;
+    if (tex && renderer) texture = tex;
     // team = 1; // Enemy team
     teamID = 1;
     xRange = _xRange;
@@ -48,6 +50,9 @@ void Asteroid::update(float dt)
     if (x> xRange) active = false; // outside right bounds
     if (y+h<0) active = false; // outside top bounds
     if (y> yRange) active = false; // outside bottom bounds
+    if (velX < 0.1f && velY < 0.1f) active = false; // almost stopped 
+    angle += 20.0f * dt;
+    if (angle >= 360.0f) angle -= 360.0f;
     flashRedOnDamage();
     rect = {static_cast<int>(x), static_cast<int>(y), static_cast<int>(w), static_cast<int>(h)};
     // printf("Damage Cooldown: %.2f seconds\n", damageCooldown);
@@ -85,7 +90,7 @@ void Asteroid::respawn(Point2D spawnPoint, float velX, float velY)
     active = true;
 }
 
-EnemySpawner::EnemySpawner(SDL_Window *win, std::vector<gameObject *> _scene, int marginY, int marginX, int maxAlive, int batchSize, int coolDown, bool edgesOnly)
+EnemySpawner::EnemySpawner(SDL_Window *win, SDL_Renderer *renderer, std::vector<gameObject *> _scene, int marginY, int marginX, int maxAlive, int batchSize, int coolDown, bool edgesOnly)
 {
     int height, width;
     this->edgesOnly = edgesOnly;
@@ -95,6 +100,7 @@ EnemySpawner::EnemySpawner(SDL_Window *win, std::vector<gameObject *> _scene, in
     this->batchSize = batchSize;
     maxCoolDown = static_cast<float>(coolDown);
     this->scene = &_scene; // save a pointer to the scene objects to update later
+    this->renderer = renderer;
     // possible positions: width-marginX to width, 0 to marginX, 0 to marginY, height-marginY to height - edgesOnly
     // possible positions: marginX to width-marginX, marginY to height-marginY - !edgesOnly
     // generate a table of randomized velocities for spawning enemies, max 10 different ones
@@ -149,6 +155,8 @@ std::vector<gameObject *> *EnemySpawner::InitializeEnemies()
     int spawnedCount = 0;
     this->scene->clear();
     this->coolDownTimer = 0.0f;
+    std::string texturePath = "assets/textures/asteroid.png";
+    SDL_Texture *texture = IMG_LoadTexture(renderer, texturePath.c_str());
     // Just debug for now
     printf("Enemy Spawner Started\n");
     printf("Spawn Points:\n");
@@ -168,7 +176,7 @@ std::vector<gameObject *> *EnemySpawner::InitializeEnemies()
         float velX = baseSpeed * cos(angle + angleNoise);
         float velY = baseSpeed * sin(angle + angleNoise);
         auto [width, height] = GenerateAsteroidSize();
-        scene->emplace_back(new Asteroid(point.x, point.y, width, height, velX, velY, {200, 200, 200, 255}, 1, windowSize.first, windowSize.second, nullptr));
+        scene->emplace_back(new Asteroid(point.x, point.y, width, height, velX, velY, {200, 200, 200, 255}, 1, windowSize.first, windowSize.second, texture, renderer));
         // make the asteroid not active initially
         scene->back()->active = false;
         spawnedCount++;

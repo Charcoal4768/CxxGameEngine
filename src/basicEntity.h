@@ -23,6 +23,13 @@ struct gameObject
     virtual ~gameObject() = default;
 };
 
+struct controllable
+{
+    // just bool flags for now
+    bool dead = false;
+};
+
+
 struct Point2D{
     double x = 0.0;
     double y = 0.0;
