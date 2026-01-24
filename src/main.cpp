@@ -171,6 +171,39 @@ struct Player : public gameObject, public controllable, public Moveable, public 
     }
 };
 
+struct Bullet : public gameObject, public Moveable, public Damaging, public Damageable //do not use (yet) work in progress
+{
+    //when shot, movement will apply in a stored direction 
+    //(x=speed*cos(theta), y = speed*sin(theta))
+    //instead of computing direction everytime the function is called
+    //we will calculate it once and keep using it, 
+    //we will only ever update it if we add like a richochet mechanism or something
+    //gameObject angle tho... speed * 2 * dt rotation
+    float shotAngle;
+    float maxSpeed;
+    float range;
+    float distMoved;
+    int startingDmg;
+    std::pair<int,int> startPos;
+    void takeDamage(Damaging* source) override{
+        if (!active) return;
+        if (source->teamID == teamID) return; // Ignore friendly fire
+        Damageable::takeDamage(source);
+        //maybe richochet angle calc function call here?
+    }
+    void update(float dt) override{
+        if (!active) return;
+        if (isDed) {active = false; return;}
+        applyMovement(x, y, dt);
+        distMoved = std::sqrt(
+            (startPos.first*startPos.first)+
+            (startPos.second*startPos.second)
+        );
+        if (distMoved >= range){active = false; distMoved = 0;}
+        if (velX < 0.1f && velY < 0.1f) active = false;
+    }
+};
+
 CollisionGrid colgrid;
 
 void collisionCheck(double deltaTime)

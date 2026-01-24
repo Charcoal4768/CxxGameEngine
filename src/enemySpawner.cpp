@@ -40,11 +40,11 @@ Asteroid::Asteroid(float _x, float _y, float _w, float _h, float _velX, float _v
 
 void Asteroid::update(float dt)
 {
+    if (!active) return;
     if (isDed) {
         active = false;
         return;
     }
-    if (!active) return;
     applyMovement(x, y, dt);
     if (x+w<0) active = false; // outside left bounds
     if (x> xRange) active = false; // outside right bounds
